@@ -188,7 +188,7 @@ def extract_stream_info(meta_file, meta):
             v = meta["imroTbl"][c].split(" ")[index_imroTbl]
             per_channel_gain[c] = 1.0 / float(v)
         gain_factor = float(meta["imAiRangeMax"]) / 512
-        channel_gains = gain_factor * per_channel_gain * 1e6
+        channel_gains = gain_factor * per_channel_gain * 1e3
     elif meta["imDatPrb_type"] in ("21", "24", "2003", "2004", "2013", "2014"):
         # This work with NP 2.0 case with different metadata versions
         # https://github.com/billkarsh/SpikeGLX/blob/15ec8898e17829f9f08c226bf04f46281f106e5f/Markdown/Metadata_30.md#imec
