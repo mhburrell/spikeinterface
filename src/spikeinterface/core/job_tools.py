@@ -8,7 +8,6 @@ import numpy as np
 import platform
 import os
 import warnings
-import pickle
 
 import sys
 import contextlib
@@ -387,18 +386,12 @@ class ChunkRecordingExecutor:
         else:
             n_jobs = min(self.n_jobs, len(all_chunks))
 
-            init_args  = (self.func, self.init_func, self.init_args, self.max_threads_per_process)
-            import pickle
-            #dump this to a pickle file
-            with open('init_args.pkl', 'wb') as f:
-                pickle.dump(init_args, f)
-
             # parallel
             with ProcessPoolExecutor(
                 max_workers=n_jobs,
-                initializer=worker_initializer_read_pickle,
+                initializer=worker_initializer,
                 mp_context=mp.get_context(self.mp_context),
-                initargs=('init_args.pkl',),
+                initargs=(self.func, self.init_func, self.init_args, self.max_threads_per_process),
             ) as executor:
                 results = executor.map(function_wrapper, all_chunks)
 
@@ -421,29 +414,6 @@ class ChunkRecordingExecutor:
 global _worker_ctx
 global _func
 
-import pickle
-from threadpoolctl import threadpool_limits
-
-def worker_initializer_read_pickle(in_pickle):
-    # Load the configuration from a pickle file.
-    try:
-        with open(in_pickle, 'rb') as f:
-            func, init_func, init_args, max_threads_per_process = pickle.load(f)
-    except (FileNotFoundError, pickle.UnpicklingError) as e:
-        raise Exception(f"Failed to load initialization data: {e}")
-
-    # Initialize global context for the worker.
-    global _worker_ctx, _func
-    if max_threads_per_process is None:
-        _worker_ctx = init_func(*init_args)  # Unpack init_args correctly here.
-    else:
-        # Limit the number of threads for this process if specified.
-        with threadpool_limits(limits=max_threads_per_process):
-            _worker_ctx = init_func(*init_args)  # Unpack init_args correctly here.
-
-    # Store additional configuration in the context.
-    _worker_ctx["max_threads_per_process"] = max_threads_per_process
-    _func = func  # Set the function to be used by the worker.
 
 def worker_initializer(func, init_func, init_args, max_threads_per_process):
     global _worker_ctx
@@ -523,4 +493,3 @@ def get_poolexecutor(n_jobs):
         return MockPoolExecutor
     else:
         return ProcessPoolExecutor
-

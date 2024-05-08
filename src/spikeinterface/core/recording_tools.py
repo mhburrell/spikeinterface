@@ -7,10 +7,8 @@ import os
 import gc
 import mmap
 import tqdm
-#if OS is windows, import win32file
-if os.name == 'nt':
-    import win32file
-    import win32api
+
+
 import numpy as np
 
 from .core_tools import add_suffix, make_shared_array
@@ -69,28 +67,6 @@ def _init_binary_worker(recording, file_path_dict, dtype, byte_offest, cast_unsi
     return worker_ctx
 
 
-
-def allocate_file(file_path, file_size_bytes):
-    # Open the file
-    if isinstance(file_path, Path):
-        file_path = str(file_path)
-
-    handle = win32file.CreateFile(
-        file_path,
-        win32file.GENERIC_WRITE,
-        0,
-        None,
-        win32file.CREATE_ALWAYS,
-        0,
-        None
-    )
-
-    # Move the file pointer and set the end of the file
-    win32file.SetFilePointer(handle, file_size_bytes, win32file.FILE_BEGIN)
-    win32file.SetEndOfFile(handle)
-    win32file.CloseHandle(handle)
-
-
 def write_binary_recording(
     recording,
     file_paths,
@@ -146,18 +122,10 @@ def write_binary_recording(
         num_frames = recording.get_num_frames(segment_index=segment_index)
         data_size_bytes = dtype_size_bytes * num_frames * num_channels
         file_size_bytes = data_size_bytes + byte_offset
-        
-        if os.name == 'nt':
-            allocate_file(file_path, file_size_bytes)
-        else:
-            file = open(file_path, "wb+")
-            file.truncate(file_size_bytes)
-            file.close()
 
-        #file = open(file_path, "wb+")
-        #file.truncate(file_size_bytes)
-        #file.close()
-        #allocate_file(file_path, file_size_bytes)
+        file = open(file_path, "wb+")
+        file.truncate(file_size_bytes)
+        file.close()
         assert Path(file_path).is_file()
 
     # use executor (loop or workers)
